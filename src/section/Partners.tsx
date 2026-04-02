@@ -16,10 +16,10 @@ export default function PartnersSection() {
         {/* Header */}
         <div className="text-center mb-12">
           <p className="text-xs font-semibold tracking-widest uppercase text-slate-500 mb-2">
-            Dipercaya oleh
+            Dipercaya Oleh
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-            Perusahaan terkemuka di Indonesia
+            Perusahaan Terkemuka Indonesia
           </h2>
         </div>
 

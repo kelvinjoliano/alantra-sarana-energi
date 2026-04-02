@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
+import SessionProvider from "@/components/SessionProvider";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,11 +20,13 @@ export const metadata: Metadata = {
   description: "Website resmi sertifikasi",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const session = await getServerSession(authOptions);
+
   return (
     <html lang="id">
       <body
@@ -33,9 +36,7 @@ export default function RootLayout({
           min-h-full flex flex-col antialiased
         `}
       >
-        <Navbar />
-        {children}
-        <Footer />
+        <SessionProvider session={session}>{children}</SessionProvider>
       </body>
     </html>
   );

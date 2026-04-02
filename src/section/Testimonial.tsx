@@ -42,9 +42,9 @@ export default function TestimonialsSection() {
             Testimoni
           </p>
           <h2 className="text-3xl md:text-4xl font-bold tracking-tight text-white leading-tight">
-            Apa kata mereka yang
+            Apa Kata Mereka yang
             <br />
-            sudah bersama kami
+            Sudah Bersama Kami
           </h2>
         </div>
 

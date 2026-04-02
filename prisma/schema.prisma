@@ -1,0 +1,257 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  PESERTA
+}
+
+enum StatusPendaftaran {
+  MENUNGGU
+  DIVERIFIKASI
+  AKTIF
+  SELESAI
+  DITOLAK
+}
+
+enum StatusPembayaran {
+  BELUM_BAYAR
+  MENUNGGU_KONFIRMASI
+  LUNAS
+  DIKEMBALIKAN
+}
+
+// ─────────────────────────────────────────────
+// NEXTAUTH — User & Auth Models
+// ─────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String?   // bcrypt hash, null jika pakai OAuth
+  image         String?
+  role          Role      @default(PESERTA)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  peserta   Peserta?
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─────────────────────────────────────────────
+// PESERTA PROFILE
+// ─────────────────────────────────────────────
+
+model Peserta {
+  id           String    @id @default(cuid())
+  userId       String    @unique
+  nik          String?   @unique
+  tempatLahir  String?
+  tanggalLahir DateTime?
+  jenisKelamin String?
+  alamat       String?   @db.Text
+  kota         String?
+  provinsi     String?
+  noTelepon    String?
+  perusahaan   String?
+  jabatan      String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pendaftaran Pendaftaran[]
+  dokumen     Dokumen[]
+
+  @@map("peserta")
+}
+
+// ─────────────────────────────────────────────
+// SERTIFIKASI — Int id dipertahankan
+// ─────────────────────────────────────────────
+
+model Sertifikasi {
+  id        Int      @id @default(autoincrement())
+  nama      String
+  slug      String   @unique
+  kategori  String
+  deskripsi String?
+  isActive  Boolean  @default(true)       
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tingkatan   Tingkatan[]
+  jadwal      Jadwal[]
+  pendaftaran Pendaftaran[]
+
+  @@map("sertifikasi")
+}
+
+model Tingkatan {
+  id              Int      @id @default(autoincrement())
+  sertifikasiId   Int
+  nama            String
+  tarif           Int      // rupiah — field lama dipertahankan
+  dokumenSkemaUrl String?  // lama — akan dimigrasi ke Cloudinary bertahap
+  durasi          Int?     // hari — opsional, bisa diisi nanti
+  kuota           Int      @default(20)   // ← tambahan baru
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt     // ← tambahan baru
+
+  sertifikasi Sertifikasi   @relation(fields: [sertifikasiId], references: [id], onDelete: Cascade)
+  jadwal      Jadwal[]
+  pendaftaran Pendaftaran[]
+
+  @@map("tingkatan")
+}
+
+model Jadwal {
+  id                Int      @id @default(autoincrement())
+  sertifikasiId     Int
+  tingkatanId       Int?     // ← tambahan baru, opsional (nullable agar tidak break)
+  tanggalMulai      DateTime
+  tanggalSelesai    DateTime
+  lokasi            String?  // ← tambahan baru
+  metodePelaksanaan String   @default("Offline") // ← tambahan baru
+  kuotaTersedia     Int      @default(20)         // ← tambahan baru
+  isPublished       Boolean  @default(false)      // ← tambahan baru
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @default(now()) @updatedAt            // ← tambahan baru
+
+  sertifikasi Sertifikasi   @relation(fields: [sertifikasiId], references: [id], onDelete: Cascade)
+  tingkatan   Tingkatan?    @relation(fields: [tingkatanId], references: [id]) // nullable
+  pendaftaran Pendaftaran[]
+
+  @@map("jadwal")
+}
+
+// ─────────────────────────────────────────────
+// PENDAFTARAN
+// ─────────────────────────────────────────────
+
+model Pendaftaran {
+  id               String            @id @default(cuid())
+  noPendaftaran    String            @unique
+  pesertaId        String
+  sertifikasiId    Int               // Int — ikut Sertifikasi
+  tingkatanId      Int               // Int — ikut Tingkatan
+  jadwalId         Int?              // Int — ikut Jadwal, opsional
+  status           StatusPendaftaran @default(MENUNGGU)
+  statusPembayaran StatusPembayaran  @default(BELUM_BAYAR)
+  totalBiaya       Int               // rupiah, konsisten dengan tarif
+  catatan          String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  peserta     Peserta     @relation(fields: [pesertaId], references: [id])
+  sertifikasi Sertifikasi @relation(fields: [sertifikasiId], references: [id])
+  tingkatan   Tingkatan   @relation(fields: [tingkatanId], references: [id])
+  jadwal      Jadwal?     @relation(fields: [jadwalId], references: [id])
+  dokumen     Dokumen[]
+  pembayaran  Pembayaran[]
+
+  @@map("pendaftaran")
+}
+
+// ─────────────────────────────────────────────
+// DOKUMEN — Cloudinary
+// ─────────────────────────────────────────────
+
+model Dokumen {
+  id            String   @id @default(cuid())
+  pesertaId     String?
+  pendaftaranId String?
+  nama          String
+  tipe          String   // KTP | IJAZAH | FOTO | BUKTI_BAYAR | SKEMA | LAINNYA
+  cloudinaryId  String
+  cloudinaryUrl String
+  fileSize      Int?
+  mimeType      String?
+  isVerified    Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  peserta     Peserta?     @relation(fields: [pesertaId], references: [id])
+  pendaftaran Pendaftaran? @relation(fields: [pendaftaranId], references: [id])
+
+  @@map("dokumen")
+}
+
+// ─────────────────────────────────────────────
+// PEMBAYARAN
+// ─────────────────────────────────────────────
+
+model Pembayaran {
+  id               String    @id @default(cuid())
+  pendaftaranId    String
+  jumlah           Int       // rupiah
+  metodePembayaran String
+  buktiCloudinaryId  String?
+  buktiCloudinaryUrl String?
+  tanggalBayar     DateTime?
+  dikonfirmasiOleh String?   // userId admin
+  dikonfirmasiAt   DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id])
+
+  @@map("pembayaran")
+}

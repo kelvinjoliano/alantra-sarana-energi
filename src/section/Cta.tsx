@@ -48,7 +48,7 @@ export default function CTASection() {
             </div>
 
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white tracking-tight mb-4 leading-tight">
-              Siap meraih sertifikat
+              Siap Meraih Sertifikat
               <br />
               <span
                 className="bg-clip-text text-transparent"
@@ -57,7 +57,7 @@ export default function CTASection() {
                     "linear-gradient(135deg, #2dd4bf 0%, #4ade80 100%)",
                 }}
               >
-                kompetensi Anda?
+                Kompetensi Anda?
               </span>
             </h2>
 

@@ -79,7 +79,7 @@ const socials = [
   },
   {
     label: "WhatsApp",
-    href: "https://wa.me/6281234567890",
+    href: "https://wa.me/6282241065361",
     icon: (
       <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
         <path
@@ -177,7 +177,7 @@ export default function Footer() {
                 </svg>
               ),
               label: "Telepon",
-              value: "(+62 21) 81384180114",
+              value: "(+62) 822 - 4106 - 5361",
             },
             {
               icon: (
