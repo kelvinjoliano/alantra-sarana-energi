@@ -110,9 +110,13 @@ export default function Navbar() {
             </Link>
           ))}
           <div className="mt-3 pt-3 border-t border-white/[0.06] flex flex-col gap-2">
-            <button className="w-full py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all duration-150">
+            <Link
+              href="/login"
+              onClick={() => setOpen(false)}
+              className="w-full py-2.5 text-sm font-medium text-slate-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all duration-150 text-center"
+            >
               Masuk
-            </button>
+            </Link>
             <Link
               href="/daftar"
               onClick={() => setOpen(false)}
