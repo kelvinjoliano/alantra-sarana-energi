@@ -3,16 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-type Params = { params: { id: string } };
+type Params = { params: Promise<{ id: string }> };
 
-// GET /api/sertifikasi/[id]
 export async function GET(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const id = parseInt(params.id);
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
+
   const sertifikasi = await prisma.sertifikasi.findUnique({
     where: { id },
     include: {
@@ -28,14 +29,14 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json(sertifikasi);
 }
 
-// PUT /api/sertifikasi/[id]
 export async function PUT(req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const id = parseInt(params.id);
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
   const body = await req.json();
   const { nama, kategori, deskripsi, isActive } = body;
 
@@ -54,16 +55,15 @@ export async function PUT(req: NextRequest, { params }: Params) {
   return NextResponse.json(sertifikasi);
 }
 
-// DELETE /api/sertifikasi/[id]
 export async function DELETE(_req: NextRequest, { params }: Params) {
   const session = await getServerSession(authOptions);
   if (!session || session.user.role !== "ADMIN") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const id = parseInt(params.id);
+  const { id: idStr } = await params;
+  const id = parseInt(idStr);
 
-  // Cek apakah ada pendaftaran aktif
   const pendaftaranCount = await prisma.pendaftaran.count({
     where: { sertifikasiId: id },
   });
