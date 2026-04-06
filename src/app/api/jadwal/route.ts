@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     prisma.jadwal.findMany({
       where,
       include: {
-        sertifikasi: { select: { id: true, nama: true, kode: true } },
+        sertifikasi: { select: { id: true, nama: true } },
         tingkatan: { select: { id: true, nama: true, tarif: true } },
         _count: { select: { pendaftaran: true } },
       },
