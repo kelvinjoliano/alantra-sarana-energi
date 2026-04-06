@@ -30,6 +30,8 @@ export default async function ServicePage() {
           id: true,
           tanggalMulai: true,
           tanggalSelesai: true,
+          lokasi: true,
+          metodePelaksanaan: true,
         },
         orderBy: { tanggalMulai: "asc" },
       },

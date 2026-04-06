@@ -9,6 +9,8 @@ export type Jadwal = {
   id: number;
   tanggalMulai: Date | string;
   tanggalSelesai: Date | string;
+  lokasi: string | null;
+  metodePelaksanaan: string;
 };
 
 export type Sertifikasi = {

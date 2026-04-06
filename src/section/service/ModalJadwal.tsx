@@ -51,6 +51,12 @@ export default function ModalJadwal({ sertifikasi, onClose }: Props) {
               <th className="text-left px-5 py-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">
                 Jadwal *
               </th>
+              <th className="text-left px-5 py-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">
+                Lokasi
+              </th>
+              <th className="text-left px-5 py-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">
+                Metode
+              </th>
               <th className="text-right px-5 py-3 text-slate-400 font-semibold text-xs uppercase tracking-wider">
                 Aksi
               </th>
@@ -60,7 +66,7 @@ export default function ModalJadwal({ sertifikasi, onClose }: Props) {
             {sertifikasi.jadwal.length === 0 ? (
               <tr>
                 <td
-                  colSpan={3}
+                  colSpan={5}
                   className="text-center py-8 text-slate-500 text-xs"
                 >
                   Belum ada jadwal tersedia
@@ -78,6 +84,37 @@ export default function ModalJadwal({ sertifikasi, onClose }: Props) {
                   <td className="px-5 py-3.5 text-white">
                     {formatTanggal(j.tanggalMulai)} s.d{" "}
                     {formatTanggal(j.tanggalSelesai)}
+                  </td>
+                  <td className="px-5 py-3.5 text-slate-300 text-xs">
+                    {j.lokasi ? (
+                      <span className="flex items-center gap-1">
+                        <svg
+                          width="11"
+                          height="11"
+                          viewBox="0 0 12 12"
+                          fill="none"
+                        >
+                          <path
+                            d="M6 1C4.067 1 2.5 2.567 2.5 4.5C2.5 7.25 6 11 6 11C6 11 9.5 7.25 9.5 4.5C9.5 2.567 7.933 1 6 1ZM6 6C5.172 6 4.5 5.328 4.5 4.5C4.5 3.672 5.172 3 6 3C6.828 3 7.5 3.672 7.5 4.5C7.5 5.328 6.828 6 6 6Z"
+                            fill="currentColor"
+                          />
+                        </svg>
+                        {j.lokasi}
+                      </span>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-5 py-3.5">
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold text-white ${
+                        j.metodePelaksanaan === "Online"
+                          ? "bg-blue-500/15 text-blue-400"
+                          : "bg-teal-500/15 text-teal-400"
+                      }`}
+                    >
+                      {j.metodePelaksanaan}
+                    </span>
                   </td>
                   <td className="px-5 py-3.5 text-right">
                     <Link

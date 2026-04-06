@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-function LoginPageInner() {
+function RegisterPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const callbackUrl = searchParams.get("callbackUrl");
@@ -19,26 +19,51 @@ function LoginPageInner() {
     setError("");
 
     const formData = new FormData(e.currentTarget);
+    const name = formData.get("name") as string;
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const confirmPassword = formData.get("confirmPassword") as string;
 
-    const result = await signIn("credentials", {
-      email: formData.get("email"),
-      password: formData.get("password"),
-      redirect: false,
-    });
-
-    if (result?.error) {
-      setError("Email atau password salah");
+    if (password !== confirmPassword) {
+      setError("Password dan konfirmasi password tidak cocok");
       setLoading(false);
       return;
     }
 
-    const res = await fetch("/api/auth/session");
-    const session = await res.json();
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter");
+      setLoading(false);
+      return;
+    }
 
-    if (session?.user?.role === "ADMIN") {
-      router.push(callbackUrl ?? "/admin");
-    } else {
+    try {
+      const res = await fetch("/api/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Gagal mendaftar");
+
+      // Auto login setelah register
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        setError("Akun dibuat tapi gagal login otomatis, silakan login manual");
+        router.push("/login");
+        return;
+      }
+
       router.push(callbackUrl ?? "/dashboard");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Terjadi kesalahan");
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -85,10 +110,27 @@ function LoginPageInner() {
         {/* Form Card */}
         <div className="bg-[#1a2332] border border-white/8 rounded-2xl p-6 shadow-2xl">
           <h2 className="text-white font-medium text-sm mb-5">
-            Masuk ke akun Anda
+            Buat akun baru
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Nama Lengkap
+              </label>
+              <input
+                name="name"
+                type="text"
+                required
+                autoComplete="name"
+                placeholder="Nama lengkap"
+                className="w-full bg-[#0f1720] border border-white/10 rounded-lg px-3 py-2.5
+                           text-sm text-white placeholder-slate-600
+                           focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20
+                           transition-all duration-200"
+              />
+            </div>
+
             <div>
               <label className="block text-xs font-medium text-slate-400 mb-1.5">
                 Email
@@ -114,8 +156,25 @@ function LoginPageInner() {
                 name="password"
                 type="password"
                 required
-                autoComplete="current-password"
-                placeholder="••••••••"
+                autoComplete="new-password"
+                placeholder="Minimal 8 karakter"
+                className="w-full bg-[#0f1720] border border-white/10 rounded-lg px-3 py-2.5
+                           text-sm text-white placeholder-slate-600
+                           focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20
+                           transition-all duration-200"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-slate-400 mb-1.5">
+                Konfirmasi Password
+              </label>
+              <input
+                name="confirmPassword"
+                type="password"
+                required
+                autoComplete="new-password"
+                placeholder="Ulangi password"
                 className="w-full bg-[#0f1720] border border-white/10 rounded-lg px-3 py-2.5
                            text-sm text-white placeholder-slate-600
                            focus:outline-none focus:border-teal-500/50 focus:ring-1 focus:ring-teal-500/20
@@ -171,13 +230,25 @@ function LoginPageInner() {
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                  Memuat...
+                  Memproses...
                 </span>
               ) : (
-                "Masuk"
+                "Daftar"
               )}
             </button>
           </form>
+
+          <p className="text-center text-slate-500 text-xs mt-4">
+            Sudah punya akun?{" "}
+            <Link
+              href={
+                callbackUrl ? `/login?callbackUrl=${callbackUrl}` : "/login"
+              }
+              className="text-teal-400 hover:text-teal-300 transition-colors"
+            >
+              Masuk
+            </Link>
+          </p>
         </div>
 
         <p className="text-center text-slate-600 text-xs mt-6">
@@ -188,10 +259,10 @@ function LoginPageInner() {
   );
 }
 
-export default function LoginPage() {
+export default function RegisterPage() {
   return (
     <Suspense>
-      <LoginPageInner />
+      <RegisterPageInner />
     </Suspense>
   );
 }

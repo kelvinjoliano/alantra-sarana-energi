@@ -19,18 +19,40 @@ enum Role {
 }
 
 enum StatusPendaftaran {
-  MENUNGGU
-  DIVERIFIKASI
-  AKTIF
-  SELESAI
-  DITOLAK
+  MENUNGGU_PEMBAYARAN    // baru daftar, belum upload bukti
+  MENUNGGU_VERIFIKASI    // sudah upload bukti, tunggu admin
+  AKTIF                  // admin approve
+  SELESAI                // sertifikasi selesai diikuti
+  DITOLAK                // admin tolak (lihat catatanAdmin)
 }
 
 enum StatusPembayaran {
   BELUM_BAYAR
-  MENUNGGU_KONFIRMASI
-  LUNAS
+  MENUNGGU_KONFIRMASI    // sudah upload bukti
+  LUNAS                  // admin konfirmasi
   DIKEMBALIKAN
+}
+
+enum TipeDokumen {
+  KTP
+  IJAZAH
+  FOTO
+  BUKTI_BAYAR
+  SKEMA
+  LAINNYA
+}
+
+enum MetodePembayaran {
+  TRANSFER_BANK
+  TUNAI
+  LAINNYA
+}
+
+enum StatusPendaftaranPublik {
+  BARU
+  DIPROSES
+  SELESAI
+  DITOLAK
 }
 
 // ─────────────────────────────────────────────
@@ -42,16 +64,16 @@ model User {
   name          String?
   email         String    @unique
   emailVerified DateTime?
-  password      String?   // bcrypt hash, null jika pakai OAuth
+  password      String?
   image         String?
   role          Role      @default(PESERTA)
   isActive      Boolean   @default(true)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  accounts  Account[]
-  sessions  Session[]
-  peserta   Peserta?
+  accounts Account[]
+  sessions Session[]
+  peserta  Peserta?
 
   @@map("users")
 }
@@ -103,7 +125,7 @@ model VerificationToken {
 model Peserta {
   id           String    @id @default(cuid())
   userId       String    @unique
-  nik          String?   @unique
+  nik          String?   // tidak unique — satu orang bisa daftar ulang setelah data diupdate
   tempatLahir  String?
   tanggalLahir DateTime?
   jenisKelamin String?
@@ -113,6 +135,8 @@ model Peserta {
   noTelepon    String?
   perusahaan   String?
   jabatan      String?
+  fotoUrl      String?   // Cloudinary URL foto profil
+  fotoId       String?   // Cloudinary public ID untuk delete
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -124,7 +148,7 @@ model Peserta {
 }
 
 // ─────────────────────────────────────────────
-// SERTIFIKASI — Int id dipertahankan
+// SERTIFIKASI
 // ─────────────────────────────────────────────
 
 model Sertifikasi {
@@ -133,7 +157,7 @@ model Sertifikasi {
   slug      String   @unique
   kategori  String
   deskripsi String?
-  isActive  Boolean  @default(true)       
+  isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -148,12 +172,13 @@ model Tingkatan {
   id              Int      @id @default(autoincrement())
   sertifikasiId   Int
   nama            String
-  tarif           Int      // rupiah — field lama dipertahankan
-  dokumenSkemaUrl String?  // lama — akan dimigrasi ke Cloudinary bertahap
-  durasi          Int?     // hari — opsional, bisa diisi nanti
-  kuota           Int      @default(20)   // ← tambahan baru
+  tarif           Int
+  dokumenSkemaUrl String?
+  dokumenSkemaId  String?
+  durasi          Int?
+  kuota           Int      @default(20)
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now()) @updatedAt     // ← tambahan baru
+  updatedAt       DateTime @default(now()) @updatedAt
 
   sertifikasi Sertifikasi   @relation(fields: [sertifikasiId], references: [id], onDelete: Cascade)
   jadwal      Jadwal[]
@@ -165,18 +190,18 @@ model Tingkatan {
 model Jadwal {
   id                Int      @id @default(autoincrement())
   sertifikasiId     Int
-  tingkatanId       Int?     // ← tambahan baru, opsional (nullable agar tidak break)
+  tingkatanId       Int?
   tanggalMulai      DateTime
   tanggalSelesai    DateTime
-  lokasi            String?  // ← tambahan baru
-  metodePelaksanaan String   @default("Offline") // ← tambahan baru
-  kuotaTersedia     Int      @default(20)         // ← tambahan baru
-  isPublished       Boolean  @default(false)      // ← tambahan baru
+  lokasi            String?
+  metodePelaksanaan String   @default("Offline")
+  kuotaTersedia     Int      @default(20)
+  isPublished       Boolean  @default(false)
   createdAt         DateTime @default(now())
-  updatedAt         DateTime @default(now()) @updatedAt            // ← tambahan baru
+  updatedAt         DateTime @default(now()) @updatedAt
 
   sertifikasi Sertifikasi   @relation(fields: [sertifikasiId], references: [id], onDelete: Cascade)
-  tingkatan   Tingkatan?    @relation(fields: [tingkatanId], references: [id]) // nullable
+  tingkatan   Tingkatan?    @relation(fields: [tingkatanId], references: [id])
   pendaftaran Pendaftaran[]
 
   @@map("jadwal")
@@ -188,15 +213,18 @@ model Jadwal {
 
 model Pendaftaran {
   id               String            @id @default(cuid())
-  noPendaftaran    String            @unique
+  noPendaftaran    String            @unique // format: ASE-2025-0001
   pesertaId        String
-  sertifikasiId    Int               // Int — ikut Sertifikasi
-  tingkatanId      Int               // Int — ikut Tingkatan
-  jadwalId         Int?              // Int — ikut Jadwal, opsional
-  status           StatusPendaftaran @default(MENUNGGU)
+  sertifikasiId    Int
+  tingkatanId      Int
+  jadwalId         Int?
+  status           StatusPendaftaran @default(MENUNGGU_PEMBAYARAN)
   statusPembayaran StatusPembayaran  @default(BELUM_BAYAR)
-  totalBiaya       Int               // rupiah, konsisten dengan tarif
-  catatan          String?           @db.Text
+  totalBiaya       Int
+  catatan          String?           @db.Text  // catatan peserta saat daftar
+  catatanAdmin     String?           @db.Text  // alasan tolak / catatan verifikasi
+  verifikasiOleh   String?           // userId admin yang verifikasi
+  verifikasiAt     DateTime?         // kapan diverifikasi
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -207,6 +235,10 @@ model Pendaftaran {
   dokumen     Dokumen[]
   pembayaran  Pembayaran[]
 
+  @@index([pesertaId])
+  @@index([status])
+  @@index([statusPembayaran])
+  @@index([jadwalId])
   @@map("pendaftaran")
 }
 
@@ -215,22 +247,23 @@ model Pendaftaran {
 // ─────────────────────────────────────────────
 
 model Dokumen {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   pesertaId     String?
   pendaftaranId String?
   nama          String
-  tipe          String   // KTP | IJAZAH | FOTO | BUKTI_BAYAR | SKEMA | LAINNYA
+  tipe          TipeDokumen
   cloudinaryId  String
   cloudinaryUrl String
   fileSize      Int?
   mimeType      String?
-  isVerified    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  isVerified    Boolean     @default(false)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
 
   peserta     Peserta?     @relation(fields: [pesertaId], references: [id])
   pendaftaran Pendaftaran? @relation(fields: [pendaftaranId], references: [id])
 
+  @@index([pendaftaranId, tipe])
   @@map("dokumen")
 }
 
@@ -239,19 +272,65 @@ model Dokumen {
 // ─────────────────────────────────────────────
 
 model Pembayaran {
-  id               String    @id @default(cuid())
-  pendaftaranId    String
-  jumlah           Int       // rupiah
-  metodePembayaran String
+  id                 String           @id @default(cuid())
+  pendaftaranId      String
+  jumlah             Int
+  metodePembayaran   MetodePembayaran @default(TRANSFER_BANK)
   buktiCloudinaryId  String?
   buktiCloudinaryUrl String?
-  tanggalBayar     DateTime?
-  dikonfirmasiOleh String?   // userId admin
-  dikonfirmasiAt   DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  tanggalBayar       DateTime?
+  dikonfirmasiOleh   String?          // userId admin
+  dikonfirmasiAt     DateTime?
+  catatan            String?          @db.Text // misal nama rekening pengirim
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   pendaftaran Pendaftaran @relation(fields: [pendaftaranId], references: [id])
 
+  @@index([pendaftaranId])
   @@map("pembayaran")
+}
+
+model PendaftaranPublik {
+  id               String   @id @default(cuid())
+  noPendaftaran    String   @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Data Diri
+  namaLengkap      String
+  email            String
+  nik              String
+  noHp             String
+  tempatLahir      String
+  tanggalLahir     String
+  jenisKelamin     String
+  alamat           String   @db.Text
+  kodePos          String
+  pendidikan       String
+
+  // Sertifikasi
+  skema            String
+  metode           String
+
+  // Referral
+  penanggungjawab  String   @db.Text
+
+  // Dokumen Cloudinary
+  ktpUrl           String?
+  ktpPublicId      String?
+  ijazahUrl        String?
+  ijazahPublicId   String?
+  pasFotoUrl       String?
+  pasFotoPublicId  String?
+  suratUrl         String?
+  suratPublicId    String?
+
+  // Status admin
+  status           StatusPendaftaranPublik @default(BARU)
+  catatanAdmin     String?  @db.Text
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("pendaftaran_publik")
 }
