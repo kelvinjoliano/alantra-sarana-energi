@@ -57,7 +57,7 @@ export default function ContactFAQ() {
             </p>
 
             <a
-              href="https://wa.me/6281234567890"
+              href="https://wa.me/6282241065361"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-white transition-all hover:opacity-90"
